@@ -10,12 +10,18 @@ import (
 	"sort"
 )
 
-var path string
-var verbose bool
+var (
+	path       string
+	verbose    bool
+	outputFile string
+	report     bool
+)
 
 func init() {
 	flag.StringVar(&path, "path", "", "")
 	flag.BoolVar(&verbose, "verbose", false, "")
+	flag.BoolVar(&report, "report", false, "")
+	flag.StringVar(&outputFile, "output-file", "filecounts.tsv", "")
 }
 
 func main() {
@@ -49,8 +55,35 @@ func main() {
 		fmt.Printf("%v\n", sortedSubdirMap)
 	}
 
+	if report {
+		if err := writeReport(sortedSubdirMap); err != nil {
+			panic(err)
+		}
+	}
 	printSortedMap(sortedSubdirMap)
 
+}
+
+func writeReport(sortedMap map[int][]string) error {
+	reportData := ""
+	reportData = reportData + "file count\tpath\n"
+	keys := []int{}
+	for k, _ := range sortedMap {
+		keys = append(keys, k)
+	}
+
+	sort.Ints(keys)
+	for i := len(keys) - 1; i > -1; i-- {
+		key := keys[i]
+		for _, p := range sortedMap[key] {
+			reportData = reportData + fmt.Sprintf("%d\t%s\n", key, p)
+		}
+	}
+
+	if err := os.WriteFile(outputFile, []byte(reportData), 0755); err != nil {
+		return err
+	}
+	return nil
 }
 
 func printSortedMap(sortedMap map[int][]string) {
