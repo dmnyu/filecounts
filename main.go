@@ -198,7 +198,9 @@ func updateNumWorkers(numSubdirs int) int {
 func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, workerID int) {
 	subDirResults := []SubDirResult{}
 	for _, subdir := range subdirChunk {
-		fmt.Printf("worker %d counting files in: %s\n", workerID, subdir)
+		if verbose {
+			fmt.Printf("worker %d counting files in: %s\n", workerID, subdir)
+		}
 		count, err := getCount(subdir)
 		if err != nil {
 			subDirResults = append(subDirResults, SubDirResult{subdir, count, 1})
