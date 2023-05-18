@@ -10,12 +10,11 @@ import (
 	"sort"
 )
 
-var root string
-var indexByIntMap = map[int][]string{}
+var path string
 var verbose bool
 
 func init() {
-	flag.StringVar(&root, "root", "", "")
+	flag.StringVar(&path, "path", "", "")
 	flag.BoolVar(&verbose, "verbose", false, "")
 }
 
@@ -23,78 +22,111 @@ func main() {
 	flag.Parse()
 
 	//ensure root exists and is a directory
-	fi, err := os.Stat(root)
-	if errors.Is(err, os.ErrNotExist) {
+	if err := checkDir(path); err != nil {
 		panic(err)
-	} else if err != nil {
-		panic(err)
-	} else if !fi.IsDir() {
-		panic(fmt.Errorf("%s is a not a directory\n", root))
 	}
 
 	//convert root to absolute
-	root, err = filepath.Abs(root)
+	path, err := filepath.Abs(path)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Counting files in subdirectories in %s\n", root)
-	subdirs, err := os.ReadDir(root)
+	if verbose {
+		fmt.Printf("Counting files in subdirectories in %s\n", path)
+	}
+
+	subdirMap, err := getSubDirMap()
 	if err != nil {
 		panic(err)
 	}
+	if verbose {
+		fmt.Printf("%v\n", subdirMap)
+	}
+	sortedSubdirMap := sortSubDirMapByCount(subdirMap)
 
-	subdirMap := make(map[string]int)
-	rootCount := 0
-
-	subdirCount := 0
-	for _, subdir := range subdirs {
-		if subdir.IsDir() {
-			subdirCount = subdirCount + 1
-			subdirMap[filepath.Join(root, subdir.Name())] = 0
-		} else {
-			rootCount = rootCount + 1
-		}
+	if verbose {
+		fmt.Printf("%v\n", sortedSubdirMap)
 	}
 
-	currentCount := 1
-	for k, _ := range subdirMap {
-		fmt.Printf("  * counting files in %s (%d/%d)\n", k, currentCount, subdirCount)
-		c, err := getCount(k)
-		if err != nil {
-			panic(err)
-		} else {
-			subdirMap[k] = c
-		}
-		currentCount = currentCount + 1
-	}
+	printSortedMap(sortedSubdirMap)
 
-	subdirMap[root] = rootCount
+}
 
-	for k, v := range subdirMap {
-		if contains(v) {
-			indexByIntMap[v] = append(indexByIntMap[v], k)
-		} else {
-			indexByIntMap[v] = []string{k}
-		}
-	}
-
+func printSortedMap(sortedMap map[int][]string) {
 	keys := []int{}
-	for k, _ := range indexByIntMap {
+	for k, _ := range sortedMap {
 		keys = append(keys, k)
 	}
 
-	fmt.Println("\n\t--- counts ---")
 	sort.Ints(keys)
+	fmt.Println("num files\tpath")
+	fmt.Println("---------\t----")
 	for i := len(keys) - 1; i > -1; i-- {
-		for _, subdir := range indexByIntMap[keys[i]] {
-			fmt.Printf("%d\t%s\n", i, subdir)
+		key := keys[i]
+		for _, p := range sortedMap[key] {
+			fmt.Printf("%d\t\t%s\n", key, p)
 		}
 	}
 }
 
-func contains(i int) bool {
-	for k, _ := range indexByIntMap {
+func sortSubDirMapByCount(subdirMap map[string]int) map[int][]string {
+	subdirsSorted := make(map[int][]string)
+	for p, c := range subdirMap {
+		if contains(c, subdirsSorted) {
+			subdirsSorted[c] = append(subdirsSorted[c], p)
+		} else {
+			subdirsSorted[c] = []string{p}
+		}
+	}
+	return subdirsSorted
+}
+
+func getTotalPathCount(subdirMap map[string]int) int {
+	count := 0
+	for _, v := range subdirMap {
+		count = count + v
+	}
+	return count
+}
+
+func getSubDirMap() (map[string]int, error) {
+	subdirMap := make(map[string]int)
+	subdirs, err := os.ReadDir(path)
+	if err != nil {
+		return subdirMap, err
+	}
+
+	pathFileCount := 0
+	for _, subdir := range subdirs {
+		if subdir.IsDir() {
+			subdirPath := filepath.Join(path, subdir.Name())
+			subdirMap[subdirPath], err = getCount(subdirPath)
+			if err != nil {
+				return subdirMap, err
+			}
+		} else {
+			pathFileCount = pathFileCount + 1
+		}
+	}
+	subdirMap[path] = pathFileCount
+	return subdirMap, nil
+}
+
+func checkDir(path string) error {
+	fi, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return (err)
+	} else if err != nil {
+		return (err)
+	} else if !fi.IsDir() {
+		return (fmt.Errorf("%s is a not a directory\n", path))
+	}
+	return nil
+}
+
+func contains(i int, m map[int][]string) bool {
+	for k, _ := range m {
 		if k == i {
 			return true
 		}
