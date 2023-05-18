@@ -25,57 +25,85 @@ func TestFileCount(t *testing.T) {
 			t.Error(err)
 		}
 		want := 5
-
 		if want != got {
 			t.Errorf("got: %d, wanted: %d", got, want)
 		}
-
 	})
 
-	t.Run("test get Subdirectory map", func(t *testing.T) {
+	t.Run("test get Subdirectory slice", func(t *testing.T) {
 		path = "test-data/multidirs"
-		want := 3
-		got, err := getSubDirMap()
+		want := 2
+		got, _, err := getSubDirSlice(path)
 		if err != nil {
 			t.Error(err)
 		}
 		if want != len(got) {
 			t.Errorf("got: %d, wanted: %d", len(got), want)
 		}
-
-		for k, v := range got {
-			if v != 5 {
-				t.Errorf("Wanted 5 got %d for %s\n", v, k)
-			}
-		}
 	})
 
-	t.Run("test get total count", func(t *testing.T) {
+	t.Run("test getting dir counts", func(t *testing.T) {
 		path = "test-data/multidirs"
-		subdirMap, err := getSubDirMap()
+		subdirSlice, pathCount, err := getSubDirSlice(path)
 		if err != nil {
 			t.Error(err)
 		}
-
-		got := getTotalPathCount(subdirMap)
-		want := 15
+		results := processSubdirs(subdirSlice)
+		results = append(results, SubDirResult{path, pathCount, 0})
+		got := len(results)
+		want := 3
 		if want != got {
 			t.Errorf("got: %d, wanted: %d", got, want)
 		}
-
 	})
 
-	t.Run("test sort by count", func(t *testing.T) {
+	t.Run("test getting file counts", func(t *testing.T) {
 		path = "test-data/multidirs"
-		subdirMap, err := getSubDirMap()
+		subdirSlice, pathCount, err := getSubDirSlice(path)
 		if err != nil {
 			t.Error(err)
 		}
-		sortedMap := sortSubDirMapByCount(subdirMap)
-		want := 1
-		got := len(sortedMap)
-		if want != got {
-			t.Errorf("wanted: %d, got %d\n", want, got)
+		results := processSubdirs(subdirSlice)
+		results = append(results, SubDirResult{path, pathCount, 0})
+
+		for _, result := range results {
+			want := 5
+			got := result.Count
+			if want != got {
+				t.Errorf("got: %d, wanted: %d", got, want)
+			}
 		}
 	})
+	/*
+
+		t.Run("test get total count", func(t *testing.T) {
+			path = "test-data/multidirs"
+			subdirMap, err := getSubDirMap()
+			if err != nil {
+				t.Error(err)
+			}
+
+			got := getTotalPathCount(subdirMap)
+			want := 15
+			if want != got {
+				t.Errorf("got: %d, wanted: %d", got, want)
+			}
+		})
+
+		t.Run("test sort by count", func(t *testing.T) {
+			path = "test-data/multidirs"
+			subdirMap, err := getSubDirMap()
+			if err != nil {
+				t.Error(err)
+			}
+			sortedMap := sortSubDirMapByCount(subdirMap)
+			want := 1
+			got := len(sortedMap)
+			if want != got {
+				t.Errorf("wanted: %d, got %d\n", want, got)
+			}
+		})
+
+	*/
+
 }

@@ -10,11 +10,18 @@ import (
 	"sort"
 )
 
+type SubDirResult struct {
+	Path   string
+	Count  int
+	Result int
+}
+
 var (
 	path       string
 	verbose    bool
 	outputFile string
 	report     bool
+	workers    int
 )
 
 func init() {
@@ -22,6 +29,7 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "")
 	flag.BoolVar(&report, "report", false, "")
 	flag.StringVar(&outputFile, "output-file", "filecounts.tsv", "")
+	flag.IntVar(&workers, "workers", 8, "")
 }
 
 func main() {
@@ -38,28 +46,24 @@ func main() {
 		panic(err)
 	}
 
-	if verbose {
-		fmt.Printf("Counting files in subdirectories in %s\n", path)
-	}
-
-	subdirMap, err := getSubDirMap()
+	//create a slice of subdirectories, get a count of files in path dir
+	subdirSlice, filepathCount, err := getSubDirSlice(path)
 	if err != nil {
 		panic(err)
 	}
-	if verbose {
-		fmt.Printf("%v\n", subdirMap)
-	}
-	sortedSubdirMap := sortSubDirMapByCount(subdirMap)
 
-	if verbose {
-		fmt.Printf("%v\n", sortedSubdirMap)
-	}
+	//process the subdirectories
+	results := processSubdirs(subdirSlice)
 
-	if report {
-		if err := writeReport(sortedSubdirMap); err != nil {
-			panic(err)
-		}
-	}
+	//append the path to the results
+	results = append(results, SubDirResult{path, filepathCount, 0})
+
+	//sort the results by file-count
+	sortedSubdirMap := sortSubDirMapByCount(results)
+
+	//count files in root directory
+
+	//print the results
 	printSortedMap(sortedSubdirMap)
 
 }
@@ -103,13 +107,16 @@ func printSortedMap(sortedMap map[int][]string) {
 	}
 }
 
-func sortSubDirMapByCount(subdirMap map[string]int) map[int][]string {
+func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
+
 	subdirsSorted := make(map[int][]string)
-	for p, c := range subdirMap {
-		if contains(c, subdirsSorted) {
-			subdirsSorted[c] = append(subdirsSorted[c], p)
-		} else {
-			subdirsSorted[c] = []string{p}
+	for _, subdirResult := range subdirResults {
+		if subdirResult.Result == 0 {
+			if contains(subdirResult.Count, &subdirsSorted) {
+				subdirsSorted[subdirResult.Count] = append(subdirsSorted[subdirResult.Count], subdirResult.Path)
+			} else {
+				subdirsSorted[subdirResult.Count] = []string{subdirResult.Path}
+			}
 		}
 	}
 	return subdirsSorted
@@ -123,43 +130,38 @@ func getTotalPathCount(subdirMap map[string]int) int {
 	return count
 }
 
-func getSubDirMap() (map[string]int, error) {
-	subdirMap := make(map[string]int)
-	subdirs, err := os.ReadDir(path)
+func getSubDirSlice(p string) ([]string, int, error) {
+	subdirSlice := []string{}
+	pathFileCount := 0
+	subdirs, err := os.ReadDir(p)
 	if err != nil {
-		return subdirMap, err
+		return subdirSlice, pathFileCount, err
 	}
 
-	pathFileCount := 0
 	for _, subdir := range subdirs {
 		if subdir.IsDir() {
-			subdirPath := filepath.Join(path, subdir.Name())
-			subdirMap[subdirPath], err = getCount(subdirPath)
-			if err != nil {
-				return subdirMap, err
-			}
+			subdirSlice = append(subdirSlice, filepath.Join(path, subdir.Name()))
 		} else {
 			pathFileCount = pathFileCount + 1
 		}
 	}
-	subdirMap[path] = pathFileCount
-	return subdirMap, nil
+	return subdirSlice, pathFileCount, nil
 }
 
-func checkDir(path string) error {
-	fi, err := os.Stat(path)
+func checkDir(p string) error {
+	fi, err := os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return (err)
 	} else if err != nil {
 		return (err)
 	} else if !fi.IsDir() {
-		return (fmt.Errorf("%s is a not a directory\n", path))
+		return (fmt.Errorf("%s is a not a directory\n", p))
 	}
 	return nil
 }
 
-func contains(i int, m map[int][]string) bool {
-	for k, _ := range m {
+func contains(i int, m *map[int][]string) bool {
+	for k, _ := range *m {
 		if k == i {
 			return true
 		}
@@ -167,9 +169,67 @@ func contains(i int, m map[int][]string) bool {
 	return false
 }
 
-func getCount(path string) (int, error) {
+func processSubdirs(subdirs []string) []SubDirResult {
+	workers = updateNumWorkers(len(subdirs))
+	subdirChunks := splitSubdirs(subdirs)
+
+	resultChannel := make(chan []SubDirResult)
+	for i, chunk := range subdirChunks {
+		go processSubdir(chunk, resultChannel, i+1)
+	}
+
+	results := []SubDirResult{}
+	for range subdirChunks {
+		chunk := <-resultChannel
+		results = append(results, chunk...)
+	}
+
+	return results
+}
+
+func updateNumWorkers(numSubdirs int) int {
+	if numSubdirs < workers {
+		return numSubdirs
+	} else {
+		return workers
+	}
+}
+
+func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, workerID int) {
+	subDirResults := []SubDirResult{}
+	for _, subdir := range subdirChunk {
+		fmt.Printf("worker %d counting files in: %s\n", workerID, subdir)
+		count, err := getCount(subdir)
+		if err != nil {
+			subDirResults = append(subDirResults, SubDirResult{subdir, count, 1})
+		} else {
+			subDirResults = append(subDirResults, SubDirResult{subdir, count, 0})
+		}
+	}
+
+	resultChannel <- subDirResults
+}
+
+func splitSubdirs(subdirs []string) [][]string {
+	var divided [][]string
+
+	chunkSize := (len(subdirs) + workers - 1) / workers
+
+	for i := 0; i < len(subdirs); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(subdirs) {
+			end = len(subdirs)
+		}
+
+		divided = append(divided, subdirs[i:end])
+	}
+	return divided
+}
+
+func getCount(p string) (int, error) {
 	count := 0
-	if err := filepath.Walk(path, func(obj string, info fs.FileInfo, err error) error {
+	if err := filepath.Walk(p, func(obj string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			count = count + 1
 			if verbose {
