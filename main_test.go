@@ -108,21 +108,27 @@ func TestFileCount(t *testing.T) {
 			t.Errorf("got: %d, wanted: %d", got, want)
 		}
 	})
-	/*
-		t.Run("test sort by count", func(t *testing.T) {
-			path = "test-data/multidirs"
-			subdirMap, err := getSubDirMap()
-			if err != nil {
-				t.Error(err)
-			}
-			sortedMap := sortSubDirMapByCount(subdirMap)
-			want := 1
-			got := len(sortedMap)
-			if want != got {
-				t.Errorf("wanted: %d, got %d\n", want, got)
-			}
-		})
 
-	*/
+	t.Run("test sort by count", func(t *testing.T) {
+		path = "test-data/multidirs"
+		subdirSlice, pathFileCount, err := getSubDirSlice(path)
+		if err != nil {
+			t.Error(err)
+		}
+		results := processSubdirs(subdirSlice)
+		results = append(results, SubDirResult{path, pathFileCount, 0})
+
+		sortedSubdirMap := sortSubDirMapByCount(results)
+		keys := sortKeys(sortedSubdirMap)
+
+		if keys[0] != 5 {
+			t.Errorf("wanted 5, got %d", keys[0])
+		}
+
+		if keys[1] != 1 {
+			t.Errorf("wanted 1, got %d", keys[1])
+		}
+
+	})
 
 }

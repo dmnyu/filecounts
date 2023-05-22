@@ -132,6 +132,7 @@ func processSubdirs(subdirs []string) []SubDirResult {
 func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
 
 	subdirsSorted := make(map[int][]string)
+
 	for _, subdirResult := range subdirResults {
 		if subdirResult.Result == 0 {
 			if contains(subdirResult.Count, &subdirsSorted) {
@@ -146,19 +147,17 @@ func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
 
 func printSortedMap(sortedMap map[int][]string, totalCount int) {
 	fmt.Printf("total number of files in %s: %d\n", path, totalCount)
-	keys := []int{}
-	for k := range sortedMap {
-		keys = append(keys, k)
-	}
+	keys := sortKeys(sortedMap)
 
-	sort.Ints(keys)
 	fmt.Println("\nnum files\tpath")
 	fmt.Println("---------\t----")
-	for i := len(keys) - 1; i > -1; i-- {
+	for i := range keys {
 		key := keys[i]
-		for _, p := range sortedMap[key] {
+		paths := sortedMap[key]
+		for _, p := range paths {
 			fmt.Printf("%d\t\t%s\n", key, p)
 		}
+
 	}
 	fmt.Println()
 }
@@ -166,15 +165,12 @@ func printSortedMap(sortedMap map[int][]string, totalCount int) {
 func writeReport(sortedMap map[int][]string) error {
 	reportData := ""
 	reportData = reportData + "file count\tpath\n"
-	keys := []int{}
-	for k := range sortedMap {
-		keys = append(keys, k)
-	}
+	keys := sortKeys(sortedMap)
 
-	sort.Ints(keys)
-	for i := len(keys) - 1; i > -1; i-- {
+	for i := range keys {
 		key := keys[i]
-		for _, p := range sortedMap[key] {
+		paths := sortedMap[key]
+		for _, p := range paths {
 			reportData = reportData + fmt.Sprintf("%d\t%s\n", key, p)
 		}
 	}
@@ -191,6 +187,22 @@ func getTotalPathCount(results []SubDirResult) int {
 		count = count + r.Count
 	}
 	return count
+}
+
+func sortKeys(sortedMap map[int][]string) []int {
+	keys := []int{}
+	for k := range sortedMap {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
+	sortedKeys := []int{}
+	for i := len(keys) - 1; i > -1; i-- {
+		key := keys[i]
+		sortedKeys = append(sortedKeys, key)
+	}
+
+	return sortedKeys
 }
 
 func contains(i int, m *map[int][]string) bool {
