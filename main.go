@@ -22,6 +22,7 @@ var (
 	outputFile string
 	report     bool
 	workers    int
+	help       bool
 )
 
 func init() {
@@ -30,10 +31,16 @@ func init() {
 	flag.BoolVar(&report, "report", false, "")
 	flag.StringVar(&outputFile, "output-file", "filecounts.tsv", "")
 	flag.IntVar(&workers, "workers", 8, "")
+	flag.BoolVar(&help, "help", false, "")
 }
 
 func main() {
 	flag.Parse()
+
+	if help {
+		printHelp()
+		os.Exit(0)
+	}
 
 	//ensure root exists and is a directory
 	if err := checkDir(path); err != nil {
@@ -77,7 +84,20 @@ func main() {
 
 }
 
+func printHelp() {
+	fmt.Printf("usage: %s --path path_to_directory [options]\n", os.Args[0])
+	fmt.Println("Options:")
+	fmt.Println("  --help\tprint this help message")
+	fmt.Println("  --report\toutput a tsv file listing")
+	fmt.Printf("  --output-file\tname of the report to create, default: %s\n", outputFile)
+	fmt.Println("  --verbose\toutput verbose messages")
+}
+
 func checkDir(p string) error {
+	if p == "" {
+		printHelp()
+		os.Exit(1)
+	}
 	fi, err := os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return (err)
