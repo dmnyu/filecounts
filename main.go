@@ -91,6 +91,7 @@ func printHelp() {
 	fmt.Println("  --report\toutput a tsv file listing")
 	fmt.Printf("  --output-file\tname of the report to create, default: %s\n", outputFile)
 	fmt.Println("  --verbose\toutput verbose messages")
+	fmt.Println("  --workers\tnumber of threads to run")
 }
 
 func checkDir(p string) error {
@@ -246,9 +247,9 @@ func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, work
 	subDirResults := []SubDirResult{}
 	for _, subdir := range subdirChunk {
 		if verbose {
-			fmt.Printf("worker %d counting files in: %s\n", workerID, subdir)
+			fmt.Printf("* worker %d counting files in: %s\n", workerID, subdir)
 		}
-		count, err := getCount(subdir)
+		count, err := getCount(subdir, workerID)
 		if err != nil {
 			subDirResults = append(subDirResults, SubDirResult{subdir, count, 1})
 		} else {
@@ -276,13 +277,13 @@ func splitSubdirs(subdirs []string) [][]string {
 	return divided
 }
 
-func getCount(p string) (int, error) {
+func getCount(p string, workerID int) (int, error) {
 	count := 0
 	if err := filepath.Walk(p, func(obj string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			count = count + 1
 			if verbose {
-				fmt.Println("    * found ", obj)
+				fmt.Printf("* worker %d found %s\n", workerID, obj)
 			}
 		}
 		return nil
