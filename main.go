@@ -52,8 +52,12 @@ func main() {
 		panic(err)
 	}
 
+	var results []SubDirResult
+
 	//process the subdirectories
-	results := processSubdirs(subdirSlice)
+	if len(subdirSlice) > 0 {
+		results = processSubdirs(subdirSlice)
+	}
 
 	//append the path to the results
 	results = append(results, SubDirResult{path, filepathCount, 0})

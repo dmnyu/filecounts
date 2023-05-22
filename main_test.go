@@ -14,7 +14,7 @@ func TestFileCount(t *testing.T) {
 		}
 	})
 
-	t.Run("test files in test-data", func(t *testing.T) {
+	t.Run("test count files in directory", func(t *testing.T) {
 		path, err := filepath.Abs("test-data/five-files")
 		if err != nil {
 			t.Error(err)
