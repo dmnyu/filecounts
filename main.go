@@ -61,73 +61,28 @@ func main() {
 	//sort the results by file-count
 	sortedSubdirMap := sortSubDirMapByCount(results)
 
-	//count files in root directory
-
 	//print the results
-	printSortedMap(sortedSubdirMap)
+	printSortedMap(sortedSubdirMap, getTotalPathCount(results))
 
-}
-
-func writeReport(sortedMap map[int][]string) error {
-	reportData := ""
-	reportData = reportData + "file count\tpath\n"
-	keys := []int{}
-	for k, _ := range sortedMap {
-		keys = append(keys, k)
-	}
-
-	sort.Ints(keys)
-	for i := len(keys) - 1; i > -1; i-- {
-		key := keys[i]
-		for _, p := range sortedMap[key] {
-			reportData = reportData + fmt.Sprintf("%d\t%s\n", key, p)
+	//write the tsv report
+	if report {
+		if err := writeReport(sortedSubdirMap); err != nil {
+			panic(err)
 		}
 	}
 
-	if err := os.WriteFile(outputFile, []byte(reportData), 0755); err != nil {
-		return err
+}
+
+func checkDir(p string) error {
+	fi, err := os.Stat(p)
+	if errors.Is(err, os.ErrNotExist) {
+		return (err)
+	} else if err != nil {
+		return (err)
+	} else if !fi.IsDir() {
+		return (fmt.Errorf("%s is a not a directory\n", p))
 	}
 	return nil
-}
-
-func printSortedMap(sortedMap map[int][]string) {
-	keys := []int{}
-	for k, _ := range sortedMap {
-		keys = append(keys, k)
-	}
-
-	sort.Ints(keys)
-	fmt.Println("num files\tpath")
-	fmt.Println("---------\t----")
-	for i := len(keys) - 1; i > -1; i-- {
-		key := keys[i]
-		for _, p := range sortedMap[key] {
-			fmt.Printf("%d\t\t%s\n", key, p)
-		}
-	}
-}
-
-func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
-
-	subdirsSorted := make(map[int][]string)
-	for _, subdirResult := range subdirResults {
-		if subdirResult.Result == 0 {
-			if contains(subdirResult.Count, &subdirsSorted) {
-				subdirsSorted[subdirResult.Count] = append(subdirsSorted[subdirResult.Count], subdirResult.Path)
-			} else {
-				subdirsSorted[subdirResult.Count] = []string{subdirResult.Path}
-			}
-		}
-	}
-	return subdirsSorted
-}
-
-func getTotalPathCount(subdirMap map[string]int) int {
-	count := 0
-	for _, v := range subdirMap {
-		count = count + v
-	}
-	return count
 }
 
 func getSubDirSlice(p string) ([]string, int, error) {
@@ -148,27 +103,6 @@ func getSubDirSlice(p string) ([]string, int, error) {
 	return subdirSlice, pathFileCount, nil
 }
 
-func checkDir(p string) error {
-	fi, err := os.Stat(p)
-	if errors.Is(err, os.ErrNotExist) {
-		return (err)
-	} else if err != nil {
-		return (err)
-	} else if !fi.IsDir() {
-		return (fmt.Errorf("%s is a not a directory\n", p))
-	}
-	return nil
-}
-
-func contains(i int, m *map[int][]string) bool {
-	for k, _ := range *m {
-		if k == i {
-			return true
-		}
-	}
-	return false
-}
-
 func processSubdirs(subdirs []string) []SubDirResult {
 	workers = updateNumWorkers(len(subdirs))
 	subdirChunks := splitSubdirs(subdirs)
@@ -185,6 +119,78 @@ func processSubdirs(subdirs []string) []SubDirResult {
 	}
 
 	return results
+}
+
+func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
+
+	subdirsSorted := make(map[int][]string)
+	for _, subdirResult := range subdirResults {
+		if subdirResult.Result == 0 {
+			if contains(subdirResult.Count, &subdirsSorted) {
+				subdirsSorted[subdirResult.Count] = append(subdirsSorted[subdirResult.Count], subdirResult.Path)
+			} else {
+				subdirsSorted[subdirResult.Count] = []string{subdirResult.Path}
+			}
+		}
+	}
+	return subdirsSorted
+}
+
+func printSortedMap(sortedMap map[int][]string, totalCount int) {
+	fmt.Printf("total number of files: %d\n", totalCount)
+	keys := []int{}
+	for k := range sortedMap {
+		keys = append(keys, k)
+	}
+
+	sort.Ints(keys)
+	fmt.Println("\nnum files\tpath")
+	fmt.Println("---------\t----")
+	for i := len(keys) - 1; i > -1; i-- {
+		key := keys[i]
+		for _, p := range sortedMap[key] {
+			fmt.Printf("%d\t\t%s\n", key, p)
+		}
+	}
+}
+
+func writeReport(sortedMap map[int][]string) error {
+	reportData := ""
+	reportData = reportData + "file count\tpath\n"
+	keys := []int{}
+	for k := range sortedMap {
+		keys = append(keys, k)
+	}
+
+	sort.Ints(keys)
+	for i := len(keys) - 1; i > -1; i-- {
+		key := keys[i]
+		for _, p := range sortedMap[key] {
+			reportData = reportData + fmt.Sprintf("%d\t%s\n", key, p)
+		}
+	}
+
+	if err := os.WriteFile(outputFile, []byte(reportData), 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getTotalPathCount(results []SubDirResult) int {
+	count := 0
+	for _, r := range results {
+		count = count + r.Count
+	}
+	return count
+}
+
+func contains(i int, m *map[int][]string) bool {
+	for k := range *m {
+		if k == i {
+			return true
+		}
+	}
+	return false
 }
 
 func updateNumWorkers(numSubdirs int) int {
