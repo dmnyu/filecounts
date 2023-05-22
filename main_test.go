@@ -42,6 +42,20 @@ func TestFileCount(t *testing.T) {
 		}
 	})
 
+	t.Run("test empty directory handling", func(t *testing.T) {
+		path := "test-data/empty-dir"
+		_, _, err := getSubDirSlice(path)
+		if err == nil {
+			t.Error(err)
+		}
+
+		path = "test-data/five-files"
+		_, _, err = getSubDirSlice(path)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
 	t.Run("test getting dir counts", func(t *testing.T) {
 		path = "test-data/multidirs"
 		subdirSlice, pathCount, err := getSubDirSlice(path)

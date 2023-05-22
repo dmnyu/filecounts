@@ -93,6 +93,10 @@ func getSubDirSlice(p string) ([]string, int, error) {
 		return subdirSlice, pathFileCount, err
 	}
 
+	if len(subdirs) == 0 {
+		return subdirSlice, pathFileCount, fmt.Errorf("path: %s is an empty directory", p)
+	}
+
 	for _, subdir := range subdirs {
 		if subdir.IsDir() {
 			subdirSlice = append(subdirSlice, filepath.Join(path, subdir.Name()))
@@ -137,7 +141,7 @@ func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
 }
 
 func printSortedMap(sortedMap map[int][]string, totalCount int) {
-	fmt.Printf("total number of files: %d\n", totalCount)
+	fmt.Printf("total number of files in %s: %d\n", path, totalCount)
 	keys := []int{}
 	for k := range sortedMap {
 		keys = append(keys, k)
@@ -152,6 +156,7 @@ func printSortedMap(sortedMap map[int][]string, totalCount int) {
 			fmt.Printf("%d\t\t%s\n", key, p)
 		}
 	}
+	fmt.Println()
 }
 
 func writeReport(sortedMap map[int][]string) error {
