@@ -1,1 +1,3 @@
-module FileCount
+module files
+
+go 1.20

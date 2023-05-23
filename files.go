@@ -1,8 +1,7 @@
-package main
+package files
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -16,87 +15,19 @@ type SubDirResult struct {
 	Result int
 }
 
-var (
-	path       string
-	verbose    bool
-	outputFile string
-	report     bool
-	workers    int
-	help       bool
-)
-
-func init() {
-	flag.StringVar(&path, "path", "", "")
-	flag.BoolVar(&verbose, "verbose", false, "")
-	flag.BoolVar(&report, "report", false, "")
-	flag.StringVar(&outputFile, "output-file", "filecounts.tsv", "")
-	flag.IntVar(&workers, "workers", 8, "")
-	flag.BoolVar(&help, "help", false, "")
-}
-
-func main() {
-	flag.Parse()
-
-	if help {
-		printHelp()
-		os.Exit(0)
-	}
-
-	//ensure root exists and is a directory
-	if err := checkDir(path); err != nil {
-		panic(err)
-	}
-
-	//convert root to absolute
-	path, err := filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
-
-	//create a slice of subdirectories, get a count of files in path dir
-	subdirSlice, filepathCount, err := getSubDirSlice(path)
-	if err != nil {
-		panic(err)
-	}
-
-	var results []SubDirResult
-
-	//process the subdirectories
-	if len(subdirSlice) > 0 {
-		results = processSubdirs(subdirSlice)
-	}
-
-	//append the path to the results
-	results = append(results, SubDirResult{path, filepathCount, 0})
-
-	//sort the results by file-count
-	sortedSubdirMap := sortSubDirMapByCount(results)
-
-	//print the results
-	printSortedMap(sortedSubdirMap, getTotalPathCount(results))
-
-	//write the tsv report
-	if report {
-		if err := writeReport(sortedSubdirMap); err != nil {
-			panic(err)
-		}
-	}
-
-}
-
-func printHelp() {
+func PrintHelp() {
 	fmt.Printf("usage: %s --path path_to_directory [options]\n", os.Args[0])
 	fmt.Println("Options:")
 	fmt.Println("  --help\tprint this help message")
 	fmt.Println("  --report\toutput a tsv file listing")
-	fmt.Printf("  --output-file\tname of the report to create, default: %s\n", outputFile)
+	fmt.Printf("  --output-file\tname of the report to create, default: filecounts.tsv\n")
 	fmt.Println("  --verbose\toutput verbose messages")
 	fmt.Println("  --workers\tnumber of threads to run")
 }
 
-func checkDir(p string) error {
+func CheckDir(p string) error {
 	if p == "" {
-		printHelp()
+		PrintHelp()
 		os.Exit(1)
 	}
 	fi, err := os.Stat(p)
@@ -110,16 +41,16 @@ func checkDir(p string) error {
 	return nil
 }
 
-func getSubDirSlice(p string) ([]string, int, error) {
+func GetSubDirSlice(path string) ([]string, int, error) {
 	subdirSlice := []string{}
 	pathFileCount := 0
-	subdirs, err := os.ReadDir(p)
+	subdirs, err := os.ReadDir(path)
 	if err != nil {
 		return subdirSlice, pathFileCount, err
 	}
 
 	if len(subdirs) == 0 {
-		return subdirSlice, pathFileCount, fmt.Errorf("path: %s is an empty directory", p)
+		return subdirSlice, pathFileCount, fmt.Errorf("path: %s is an empty directory", path)
 	}
 
 	for _, subdir := range subdirs {
@@ -132,13 +63,13 @@ func getSubDirSlice(p string) ([]string, int, error) {
 	return subdirSlice, pathFileCount, nil
 }
 
-func processSubdirs(subdirs []string) []SubDirResult {
-	workers = updateNumWorkers(len(subdirs))
-	subdirChunks := splitSubdirs(subdirs)
+func ProcessSubdirs(subdirs []string, workers int, verbose bool) []SubDirResult {
+
+	subdirChunks := splitSubdirs(subdirs, workers)
 
 	resultChannel := make(chan []SubDirResult)
 	for i, chunk := range subdirChunks {
-		go processSubdir(chunk, resultChannel, i+1)
+		go processSubdir(chunk, resultChannel, i+1, verbose)
 	}
 
 	results := []SubDirResult{}
@@ -150,7 +81,7 @@ func processSubdirs(subdirs []string) []SubDirResult {
 	return results
 }
 
-func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
+func SortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
 
 	subdirsSorted := make(map[int][]string)
 
@@ -166,7 +97,7 @@ func sortSubDirMapByCount(subdirResults []SubDirResult) map[int][]string {
 	return subdirsSorted
 }
 
-func printSortedMap(sortedMap map[int][]string, totalCount int) {
+func PrintSortedMap(sortedMap map[int][]string, totalCount int, path string) {
 	fmt.Printf("total number of files in %s: %d\n", path, totalCount)
 	keys := sortKeys(sortedMap)
 
@@ -183,7 +114,7 @@ func printSortedMap(sortedMap map[int][]string, totalCount int) {
 	fmt.Println()
 }
 
-func writeReport(sortedMap map[int][]string) error {
+func WriteReport(sortedMap map[int][]string, outputFile string) error {
 	reportData := ""
 	reportData = reportData + "file count\tpath\n"
 	keys := sortKeys(sortedMap)
@@ -202,7 +133,7 @@ func writeReport(sortedMap map[int][]string) error {
 	return nil
 }
 
-func getTotalPathCount(results []SubDirResult) int {
+func GetTotalPathCount(results []SubDirResult) int {
 	count := 0
 	for _, r := range results {
 		count = count + r.Count
@@ -235,21 +166,13 @@ func contains(i int, m *map[int][]string) bool {
 	return false
 }
 
-func updateNumWorkers(numSubdirs int) int {
-	if numSubdirs < workers {
-		return numSubdirs
-	} else {
-		return workers
-	}
-}
-
-func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, workerID int) {
+func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, workerID int, verbose bool) {
 	subDirResults := []SubDirResult{}
 	for _, subdir := range subdirChunk {
 		if verbose {
 			fmt.Printf("* worker %d counting files in: %s\n", workerID, subdir)
 		}
-		count, err := getCount(subdir, workerID)
+		count, err := getCount(subdir, workerID, verbose)
 		if err != nil {
 			subDirResults = append(subDirResults, SubDirResult{subdir, count, 1})
 		} else {
@@ -260,7 +183,7 @@ func processSubdir(subdirChunk []string, resultChannel chan []SubDirResult, work
 	resultChannel <- subDirResults
 }
 
-func splitSubdirs(subdirs []string) [][]string {
+func splitSubdirs(subdirs []string, workers int) [][]string {
 	var divided [][]string
 
 	chunkSize := (len(subdirs) + workers - 1) / workers
@@ -277,7 +200,7 @@ func splitSubdirs(subdirs []string) [][]string {
 	return divided
 }
 
-func getCount(p string, workerID int) (int, error) {
+func getCount(p string, workerID int, verbose bool) (int, error) {
 	count := 0
 	if err := filepath.Walk(p, func(obj string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
