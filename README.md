@@ -2,23 +2,21 @@
 A tool to count files in subdirectories of a specified path and sort them
 
 ## Install
-1.  $ git clone https://github.com/dmnyu/files
-2.  $ cd files
-3.  $ make tidy // runs go mod tidy
-4.  $ make build //runs go build -o files main/main.go
-5.  $ sudo make install // this will install the bin `files` to /usr/local/bin
-
-## Test
-$ make test
+1. `$ git clone https://github.com/dmnyu/files`
+2. `$ cd files`
+3. `$ make tidy` // runs go mod tidy
+4. `$ make test` // runs the test fixtures
+5. `$ make build` //runs go build -o files main/main.go
+6. `$ sudo make install` // this will install the bin `files` to /usr/local/bin
 
 ## Run
 $files --path path-to-directory [options]<br>
 Options:<br>
-&nbsp;&nbsp;--help&nbsp;&nbsp;&nbsp;&nbsp;print this help message<br>
-&nbsp;&nbsp;--report&nbsp;&nbsp;&nbsp;&nbsp;output a tsv file listing<br>
-&nbsp;&nbsp;--output-file&nbsp;&nbsp;&nbsp;&nbsp;name of the report to create, default: `filecounts.tsv`<br>
-&nbsp;&nbsp;--verbose&nbsp;&nbsp;&nbsp;&nbsp;toutput verbose output to stdout<br>
-&nbsp;&nbsp;--workers&nbsp;&nbsp;&nbsp;&nbsp;number of threads to run simultaneously, default: 8<br>
+&nbsp;&nbsp;--help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print this help message<br>
+&nbsp;&nbsp;--report&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output a tsv file listing<br>
+&nbsp;&nbsp;--output-file&nbsp;&nbsp;&nbsp;&nbsp;path/to/report/file, default: `./filecounts.tsv`<br>
+&nbsp;&nbsp;--verbose&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output verbose output to stdout<br>
+&nbsp;&nbsp;--workers&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;number of threads to run simultaneously, default: 8<br>
 
 
 ## Sample output
