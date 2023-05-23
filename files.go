@@ -15,20 +15,9 @@ type SubDirResult struct {
 	Result int
 }
 
-func PrintHelp() {
-	fmt.Printf("usage: %s --path path_to_directory [options]\n", os.Args[0])
-	fmt.Println("Options:")
-	fmt.Println("  --help\tprint this help message")
-	fmt.Println("  --report\toutput a tsv file listing")
-	fmt.Printf("  --output-file\tname of the report to create, default: filecounts.tsv\n")
-	fmt.Println("  --verbose\toutput verbose messages")
-	fmt.Println("  --workers\tnumber of threads to run")
-}
-
 func CheckDir(p string) error {
 	if p == "" {
-		PrintHelp()
-		os.Exit(1)
+		return fmt.Errorf("--path is a mandatory option")
 	}
 	fi, err := os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {

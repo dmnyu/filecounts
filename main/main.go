@@ -3,6 +3,7 @@ package main
 import (
 	"files"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -25,17 +26,29 @@ func init() {
 	flag.BoolVar(&help, "help", false, "")
 }
 
+func PrintHelp() {
+	fmt.Printf("usage: %s --path path_to_directory [options]\n", os.Args[0])
+	fmt.Println("Options:")
+	fmt.Println("  --help\tprint this help message")
+	fmt.Println("  --report\toutput a tsv file listing")
+	fmt.Printf("  --output-file\tname of the report to create, default: %s\n", outputFile)
+	fmt.Println("  --verbose\toutput verbose messages")
+	fmt.Println("  --workers\tnumber of threads to run")
+}
+
 func main() {
 	flag.Parse()
 
 	if help {
-		files.PrintHelp()
+		PrintHelp()
 		os.Exit(0)
 	}
 
 	//ensure root exists and is a directory
 	if err := files.CheckDir(path); err != nil {
-		panic(err)
+		fmt.Printf(err.Error())
+		PrintHelp()
+		os.Exit(1)
 	}
 
 	//convert root to absolute
