@@ -15,7 +15,7 @@ Options:<br>
 &nbsp;&nbsp;--help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print this help message<br>
 &nbsp;&nbsp;--report&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output a tsv file listing<br>
 &nbsp;&nbsp;--output-file&nbsp;&nbsp;&nbsp;&nbsp;path/to/report/file, default: `./filecounts.tsv`<br>
-&nbsp;&nbsp;--verbose&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output verbose output to stdout<br>
+&nbsp;&nbsp;--verbose&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;verbose output to stdout<br>
 &nbsp;&nbsp;--workers&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;number of threads to run simultaneously, default: 8<br>
 
 
